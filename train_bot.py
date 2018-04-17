@@ -84,6 +84,7 @@ def handle_updates(updates):
             try:
                 text1 = webscrap.train_delay('19016', 'PLG')
                 chat = update["message"]["chat"]["id"]
+                send_action(chat, "typing")
                 send_message(text1, chat)
             except Exception as e:
                 print(e)
@@ -91,6 +92,7 @@ def handle_updates(updates):
             try:
                 text1 = webscrap.train_delay('19024', 'PLG')
                 chat = update["message"]["chat"]["id"]
+                send_action(chat,"typing")
                 send_message(text1, chat)
             except Exception as e:
                 print(e)
@@ -102,6 +104,10 @@ def channel_send():
     text = urllib.parse.quote_plus(text2)
     url = URL + "sendMessage?chat_id={}&text={}".format(chatid, text)
     get_url(url)
+
+def send_action(chatid, action):
+    url = URL + "sendChatAction?chat_id={}&action={}".format(chatid, action)
+    requests.get(url)
 
 x=datetime.today()
 y=x.replace(day=x.day, hour=15, minute=0, second=0, microsecond=0)
