@@ -1,19 +1,27 @@
 import time
-import json 
+import json
 import requests
 import urllib
 import webscrap
+from os import environ
+import textwrap
 try:
     import configparser
+    from configparser import NoSectionError
 except ImportError:
-	import ConfigParser as configparser
+    import ConfigParser as configparser
+    from ConfigParser import NoSectionError
 
 from datetime import datetime
 from threading import Timer
 
-CONFIG = configparser.ConfigParser()
-CONFIG.read("sample.ini")
-TOKEN = CONFIG.get('CREDS', 'API_TOKEN')
+try:
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read("sample.ini")
+    TOKEN = CONFIG.get('CREDS', 'API_TOKEN')
+except NoSectionError:
+    TOKEN = environ['TOKEN']
+
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 
@@ -52,41 +60,54 @@ def get_last_chat_id_and_text(updates):
 
 def send_message(text, chat_id):
     text = urllib.parse.quote_plus(text)
-    url = URL + "sendMessage?text={}&chat_id={}".format(text, chat_id)
+    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=markdown".format(text, chat_id)
     get_url(url)
 
 def handle_updates(updates):
     for update in updates["result"]:
-    	if "channel_post" in update:
-        	text = update["channel_post"]["text"]
-        	chat = update["channel_post"]["chat"]["id"]
-    	else:
-       		text = update["message"]["text"]
-       		chat = update["message"]["chat"]["id"]
-    	if text == "/start":
-            send_message("Welcome to train_bot.This bot will show you the current status of Sawrashtra Express and firozpur Express.To get the current status of Sawrashtra Express enter /show_sawrashtra_status.To get the current ststus of the Firozpur Express, enter /show_firozpur_status.Join channel https://t.me/train_status to get the notification everyday at 3:00pm of Sawrashtra live status", chat)
-    	elif text == "/show_sawrashtra_status":
-		    try:
-		    	text1 = "The Train is:"+webscrap.train_delay('19016', 'PLG')
-		    	chat = update["message"]["chat"]["id"]
-		    	send_message(text1, chat)
-		    except Exception as e:
-		    	print(e)
-    	elif text == "/show_firozpur_status":
-		    try:
-		    	text1 = "The Train is:"+webscrap.train_delay('19024', 'PLG')
-		    	chat = update["message"]["chat"]["id"]
-		    	send_message(text1, chat)
-		    except Exception as e:
-		    	print(e)
+        if "channel_post" in update:
+            text = update["channel_post"]["text"]
+            chat = update["channel_post"]["chat"]["id"]
+        else:
+            text = update["message"]["text"]
+            chat = update["message"]["chat"]["id"]
+        if text == "/start":
+            intro_message = textwrap.dedent("""
+            Welcome to Train Bot!
+            This bot will show you the current status of Saurashtra Express and Firozpur Express.
+            To get the current status of Saurashtra Express enter /Saurashtra.
+            To get the current status of the Firozpur Express, enter /Firozpur.
+            Join the [Channel](https://t.me/train_status) to get a notification everyday at 3:00pm for the live status of Saurashtra Express.
+            """)
+            send_message(intro_message, chat)
+        elif text == "/Saurashtra":
+            try:
+                text1 = webscrap.train_delay('19016', 'PLG')
+                chat = update["message"]["chat"]["id"]
+                send_action(chat, "typing")
+                send_message(text1, chat)
+            except Exception as e:
+                print(e)
+        elif text == "/Firozpur":
+            try:
+                text1 = webscrap.train_delay('19024', 'PLG')
+                chat = update["message"]["chat"]["id"]
+                send_action(chat,"typing")
+                send_message(text1, chat)
+            except Exception as e:
+                print(e)
 
-		
+        
 def channel_send():
-	chatid="@train_status"
-	text2="The Train is:"+webscrap.train_delay('19016', 'PLG')
-	text = urllib.parse.quote_plus(text2)
-	url = URL + "sendMessage?chat_id={}&text={}".format(chatid, text)
-	get_url(url)
+    chatid="@train_status"
+    text2=webscrap.train_delay('19016', 'PLG')
+    text = urllib.parse.quote_plus(text2)
+    url = URL + "sendMessage?chat_id={}&text={}".format(chatid, text)
+    get_url(url)
+
+def send_action(chatid, action):
+    url = URL + "sendChatAction?chat_id={}&action={}".format(chatid, action)
+    requests.get(url)
 
 x=datetime.today()
 y=x.replace(day=x.day, hour=15, minute=0, second=0, microsecond=0)
